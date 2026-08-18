@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patrimônio da Família | Gestão de Ativos e Equipamentos</title>
+    <meta name="description" content="Sistema inteligente de gestão de inventário, empréstimos e devoluções para a família de Carlos, Maria, Carlinhos, Aninha, Cleusa, Julinha, Didi e Titi.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+    <!-- CABEÇALHO PRINCIPAL -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-block">
+                <div class="brand-logo">🏠⚙️</div>
+                <div class="brand-text">
+                    <h1>Patrimônio da Família</h1>
+                    <p class="tagline">Controle Central de Equipamentos, Empréstimos & Caderneta do Ódio</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <button id="btn-quick-borrow" class="btn btn-primary" onclick="openBorrowModal()">
+                    <span class="btn-icon">📤</span> Novo Empréstimo
+                </button>
+                <button id="btn-quick-item" class="btn btn-secondary" onclick="openItemModal()">
+                    <span class="btn-icon">➕</span> Cadastrar Ativo
+                </button>
+                <button id="btn-reset-db" class="btn btn-ghost" onclick="resetDatabase()" title="Restaurar dados iniciais para demonstração">
+                    <span class="btn-icon">🔄</span> Resetar Dados
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTAINER PRINCIPAL -->
+    <main class="main-content">
+
+        <!-- PAINEL DE KPIS / ESTATÍSTICAS -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon-wrap bg-blue">📦</div>
+                <div class="kpi-info">
+                    <span class="kpi-label">Total de Ativos</span>
+                    <span class="kpi-value" id="kpi-total">0</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon-wrap bg-amber">📤</div>
+                <div class="kpi-info">
+                    <span class="kpi-label">Empréstimos Ativos</span>
+                    <span class="kpi-value text-amber" id="kpi-borrowed">0</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon-wrap bg-emerald">✅</div>
+                <div class="kpi-info">
+                    <span class="kpi-label">Disponíveis no Armário</span>
+                    <span class="kpi-value text-emerald" id="kpi-available">0</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon-wrap bg-rose">🚨</div>
+                <div class="kpi-info">
+                    <span class="kpi-label">Em Reparo / Confiscados</span>
+                    <span class="kpi-value text-rose" id="kpi-maintenance">0</span>
+                </div>
+            </div>
+
+            <div class="kpi-card highlight-card">
+                <div class="kpi-icon-wrap bg-purple" id="kpi-infrator-avatar">👦</div>
+                <div class="kpi-info">
+                    <span class="kpi-label">Campeão de Trambiques</span>
+                    <span class="kpi-value text-purple" id="kpi-infrator-nome">Carregando...</span>
+                    <span class="kpi-sub" id="kpi-infrator-detalhe">Mais saídas registradas</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABAS DE NAVEGAÇÃO -->
+        <nav class="nav-tabs-wrapper">
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-tab="tab-inventario" onclick="switchTab('tab-inventario')">
+                    <span class="tab-icon">🧰</span> Inventário de Ativos (<span id="badge-count-inventario">0</span>)
+                </button>
+                <button class="nav-tab" data-tab="tab-emprestimos" onclick="switchTab('tab-emprestimos')">
+                    <span class="tab-icon">🔄</span> Empréstimos Ativos (<span id="badge-count-emprestimos">0</span>)
+                </button>
+                <button class="nav-tab" data-tab="tab-membros" onclick="switchTab('tab-membros')">
+                    <span class="tab-icon">👥</span> Integrantes da Família (8)
+                </button>
+                <button class="nav-tab" data-tab="tab-historico" onclick="switchTab('tab-historico')">
+                    <span class="tab-icon">📜</span> Diário de Ocorrências
+                </button>
+            </div>
+        </nav>
+
+        <!-- CONTEÚDO DAS ABAS -->
+
+        <!-- ABA 1: INVENTÁRIO -->
+        <section id="tab-inventario" class="tab-pane active">
+            <!-- Barra de Filtros e Busca -->
+            <div class="filter-bar">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" placeholder="Buscar por equipamento, número de série ou cômodo..." oninput="handleSearch()">
+                </div>
+
+                <div class="filter-group">
+                    <select id="filter-status" onchange="applyFilters()">
+                        <option value="TODOS">Todos os Status</option>
+                        <option value="DISPONIVEL">🟢 Disponível</option>
+                        <option value="EMPRESTADO">🟡 Emprestado</option>
+                        <option value="MANUTENCAO">🔧 Em Manutenção</option>
+                        <option value="CONFISCADO_MARIA">👡 Confiscado pela Maria</option>
+                    </select>
+
+                    <select id="filter-categoria" onchange="applyFilters()">
+                        <option value="TODAS">Todas as Categorias</option>
+                        <!-- Preenchido dinamicamente via JS -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- Grid de Cards de Itens -->
+            <div id="items-grid" class="items-grid">
+                <!-- Preenchido dinamicamente via JS -->
+            </div>
+        </section>
+
+        <!-- ABA 2: EMPRÉSTIMOS ATIVOS -->
+        <section id="tab-emprestimos" class="tab-pane">
+            <div class="section-intro">
+                <h2>Equipamentos Atualmente em Uso na Casa</h2>
+                <p>Monitore quem pegou o quê e registre a devolução com vistoria obrigatória.</p>
+            </div>
+            <div id="active-loans-grid" class="active-loans-grid">
+                <!-- Preenchido dinamicamente via JS -->
+            </div>
+        </section>
+
+        <!-- ABA 3: MEMBROS DA FAMÍLIA -->
+        <section id="tab-membros" class="tab-pane">
+            <div class="section-intro">
+                <h2>Ficha dos Integrantes da Família</h2>
+                <p>Conheça os 8 suspeitos e veja seus índices de periculosidade patrimonial.</p>
+            </div>
+            <div id="members-grid" class="members-grid">
+                <!-- Preenchido dinamicamente via JS -->
+            </div>
+        </section>
+
+        <!-- ABA 4: HISTÓRICO & OCORRÊNCIAS -->
+        <section id="tab-historico" class="tab-pane">
+            <div class="section-intro">
+                <h2>Livro Negro & Linha do Tempo da Família</h2>
+                <p>Registro imutável de todas as saídas, devoluções, vistorias de avarias e castigos aplicados.</p>
+            </div>
+            <div class="history-container" id="history-feed">
+                <!-- Preenchido dinamicamente via JS -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== MODAIS ==================== -->
+
+    <!-- 1. MODAL DE NOVO EMPRÉSTIMO / RETIRADA -->
+    <div id="modal-borrow" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="modal-icon">📤</span>
+                    <div>
+                        <h3>Registrar Retirada de Equipamento</h3>
+                        <p>Autorização de empréstimo de patrimônio da casa</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal('modal-borrow')">✕</button>
+            </div>
+            <form id="form-borrow" onsubmit="handleBorrowSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="borrow-item-select">Selecione o Equipamento / Ativo Disponível *</label>
+                        <select id="borrow-item-select" required>
+                            <option value="">-- Escolha um item disponível --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="borrow-member-select">Quem está pegando? (Membro da Família) *</label>
+                        <select id="borrow-member-select" required onchange="handleMemberSelectPreview(this.value)">
+                            <option value="">-- Escolha o integrante --</option>
+                        </select>
+                        <div id="borrow-member-preview" class="member-preview-box hidden">
+                            <!-- Card de preview do membro -->
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="borrow-motivo">Motivo / Finalidade da Retirada *</label>
+                        <input type="text" id="borrow-motivo" placeholder="Ex: Consertar o chuveiro, Faxina pesada, Brincar no quintal" required>
+                        <div class="preset-pills">
+                            <span class="preset-pill" onclick="setBorrowMotivo('Guerra de travesseiros e brincadeiras')">🎮 Brincadeiras</span>
+                            <span class="preset-pill" onclick="setBorrowMotivo('Reparo urgente na garagem')">🔧 Reparo na Garagem</span>
+                            <span class="preset-pill" onclick="setBorrowMotivo('Operação faxina profunda na sala')">🧹 Faxina Pesada</span>
+                            <span class="preset-pill" onclick="setBorrowMotivo('Assistir futebol no domingo')">📺 Ver TV</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="borrow-dias">Prazo Previsto de Devolução</label>
+                            <select id="borrow-dias">
+                                <option value="1">1 Dia (Amanhã)</option>
+                                <option value="2">2 Dias</option>
+                                <option value="3">3 Dias</option>
+                                <option value="7">1 Semana</option>
+                                <option value="15">15 Dias</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="borrow-obs">Observações / Ameaças de Dona Maria (Opcional)</label>
+                        <textarea id="borrow-obs" rows="2" placeholder="Ex: Se voltar quebrado vai ficar sem mesada..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-borrow')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar Saída</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. MODAL DE DEVOLUÇÃO COM VISTORIA -->
+    <div id="modal-return" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header header-return">
+                <div class="modal-title-group">
+                    <span class="modal-icon">📥</span>
+                    <div>
+                        <h3>Registrar Devolução & Vistoria</h3>
+                        <p>Inspeção de integridade por Carlos e Dona Maria</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal('modal-return')">✕</button>
+            </div>
+            <form id="form-return" onsubmit="handleReturnSubmit(event)">
+                <input type="hidden" id="return-mov-id">
+                <div class="modal-body">
+                    <div id="return-summary" class="item-summary-badge">
+                        <!-- Preenchido via JS -->
+                    </div>
+
+                    <div class="form-group">
+                        <label for="return-condicao">Condição Física do Item Pós-Uso *</label>
+                        <select id="return-condicao" required onchange="handleConditionChange(this.value)">
+                            <option value="PERFEITO">✨ Perfeito Estado (Milagre! Intacto e limpo)</option>
+                            <option value="ARRANHADO">🩹 Arranhado / Marcas de Uso</option>
+                            <option value="ROIDO_PELA_TITI">🐶 Roído / Mastigado pela Titi</option>
+                            <option value="QUEBRADO_CARLINHOS">💥 Quebrado / Desmontado pelo Carlinhos</option>
+                            <option value="MOLHADO_CLEUSA">💦 Molhado / Encharcado pela Cleusa</option>
+                            <option value="DESAPARECIDO">❓ Desaparecido / Ninguém sabe onde foi parar</option>
+                        </select>
+                    </div>
+
+                    <div id="box-castigo" class="castigo-box hidden">
+                        <div class="castigo-header">
+                            <span>👡 Caderneta de Castigos da Dona Maria</span>
+                            <span class="badge badge-danger">Avaria Detectada</span>
+                        </div>
+                        <p class="castigo-hint">Como o item não voltou perfeito, aplique uma punição exemplar:</p>
+                        <input type="text" id="return-castigo" placeholder="Ex: Lavar a louça por 1 semana / Sem celular no fim de semana">
+                        <div class="preset-pills">
+                            <span class="preset-pill" onclick="setCastigo('Lavar a louça do almoço por 7 dias seguidos')">🍽️ Lavar a Louça</span>
+                            <span class="preset-pill" onclick="setCastigo('Confisco de eletrônicos até a segunda ordem')">📵 Sem Celular</span>
+                            <span class="preset-pill" onclick="setCastigo('Descer molhando e subir secando o quintal com a Cleusa')">🧹 Faxinar o Quintal</span>
+                            <span class="preset-pill" onclick="setCastigo('Pagar o conserto com a própria mesada')">💸 Pagar Conserto</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="return-status-item">Destino / Próximo Status do Item</label>
+                        <select id="return-status-item">
+                            <option value="DISPONIVEL">🟢 Guardar no Armário (Disponível)</option>
+                            <option value="MANUTENCAO">🔧 Enviar para a Oficina do Carlos (Manutenção)</option>
+                            <option value="CONFISCADO_MARIA">👡 Trancar no Quarto da Maria (Confiscado)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="return-obs">Observações da Vistoria</label>
+                        <textarea id="return-obs" rows="2" placeholder="Explique o que aconteceu..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-return')">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Finalizar Devolução</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. MODAL DE CADASTRAR / EDITAR ITEM -->
+    <div id="modal-item" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="modal-icon" id="modal-item-icon-title">➕</span>
+                    <div>
+                        <h3 id="modal-item-title">Cadastrar Novo Equipamento</h3>
+                        <p>Adicionar um ativo ao inventário patrimonial da casa</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal('modal-item')">✕</button>
+            </div>
+            <form id="form-item" onsubmit="handleItemSubmit(event)">
+                <input type="hidden" id="item-edit-id">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group flex-2">
+                            <label for="item-nome">Nome do Equipamento / Objeto *</label>
+                            <input type="text" id="item-nome" placeholder="Ex: Furadeira, Multímetro, Mop, Caixa de Som" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="item-icone">Ícone / Emoji</label>
+                            <input type="text" id="item-icone" value="📦" maxlength="4" style="text-align: center; font-size: 1.3rem;">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="item-categoria">Categoria *</label>
+                            <select id="item-categoria" required>
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="item-serial">Número de Série / Código de Tombo *</label>
+                            <div class="serial-input-wrap">
+                                <input type="text" id="item-serial" placeholder="Ex: FERR-004-CHV" required>
+                                <button type="button" class="btn-tiny" onclick="generateSerial()" title="Gerar código aleatório">⚡ Gerar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="item-localizacao">Onde fica guardado na Casa? *</label>
+                        <input type="text" id="item-localizacao" placeholder="Ex: Garagem - Prateleira 2, Lavanderia, Armário da Sala" value="Armário Central da Casa" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="item-descricao">Descrição & Avisos</label>
+                        <textarea id="item-descricao" rows="2" placeholder="Detalhes, recomendações ou cuidados ao manusear..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-item')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-item">Salvar Equipamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. MODAL DE HISTÓRICO INDIVIDUAL DO ITEM -->
+    <div id="modal-item-history" class="modal-backdrop hidden">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="modal-icon" id="history-item-icon">📦</span>
+                    <div>
+                        <h3 id="history-item-nome">Histórico do Equipamento</h3>
+                        <p id="history-item-serial">Número de Série: ---</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal('modal-item-history')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="history-item-details" class="item-details-banner"></div>
+                <h4 style="margin: 1rem 0 0.5rem 0; font-size: 1rem; color: var(--text-muted);">Linha do Tempo de Movimentações:</h4>
+                <div id="history-item-timeline" class="item-timeline-list">
+                    <!-- Preenchido dinamicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-item-history')">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. MODAL DE PERFIL DO MEMBRO -->
+    <div id="modal-member-profile" class="modal-backdrop hidden">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="modal-icon" id="profile-avatar">👤</span>
+                    <div>
+                        <h3 id="profile-nome">Ficha do Integrante</h3>
+                        <p id="profile-papel">Papel na família</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal('modal-member-profile')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="profile-header-card" class="member-profile-header"></div>
+                
+                <h4 style="margin: 1.25rem 0 0.5rem 0; font-size: 1rem; color: var(--text-muted);">Itens Atualmente em Posse:</h4>
+                <div id="profile-current-items" class="profile-items-list"></div>
+
+                <h4 style="margin: 1.25rem 0 0.5rem 0; font-size: 1rem; color: var(--text-muted);">Histórico de Ocorrências & Castigos:</h4>
+                <div id="profile-history-timeline" class="profile-timeline-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-member-profile')">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTAINER DE TOASTS DE NOTIFICAÇÃO -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
